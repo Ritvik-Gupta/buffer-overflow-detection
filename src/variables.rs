@@ -14,20 +14,36 @@ pub struct BufferVariable {
     pub content: ContentType,
 }
 
+static VARIABLE: &'static str = "[a-zA-Z][_a-zA-Z0-9]*";
+
 lazy_static! {
     pub static ref ASSIGN_STATIC_BUFFER: Regex =
-        Regex::new(r"char (?P<var>[a-zA-Z0-9]+)\[(?P<buffer_size>\d+)\];").unwrap();
+        Regex::new(&format!(
+            r"char (?P<var>{VARIABLE})\[(?P<buffer_size>\d+)\];"
+        )).unwrap();
+
     pub static ref ASSIGN_DYNAMIC_BUFFER: Regex =
-        Regex::new(r"char\* (?P<var>[a-zA-Z0-9]+) = new char\[(?P<buffer_size>\d+)\];").unwrap();
+        Regex::new(&format!(
+            r"char\* (?P<var>{VARIABLE}) = new char\[(?P<buffer_size>\d+)\];"
+        )).unwrap();
+
     pub static ref INDEXING_BUFFER: Regex =
-        Regex::new(r"(?P<var>[a-zA-Z0-9]+)\[(?P<indexing_at>\d+)\] = '\w';").unwrap();
-    pub static ref STRCPY_BUFFER: Regex = Regex::new(
-        r#"strcpy\((?P<var>[a-zA-Z0-9]+), (?:"(?P<written_to_buffer>[a-zA-Z0-9]+)"|(?P<written_from_var>[a-zA-Z0-9]+))\);"#
-    )
-    .unwrap();
-    pub static ref STRCAT_BUFFER: Regex = Regex::new(
-        r#"strcat\((?P<var>[a-zA-Z0-9]+), (?:"(?P<written_to_buffer>[a-zA-Z0-9]+)"|(?P<written_from_var>[a-zA-Z0-9]+))\);"#
-    )
-    .unwrap();
-    pub static ref STD_CIN_BUFFER: Regex = Regex::new(r"std::cin >> (?P<var>[a-zA-Z0-9]+);").unwrap();
+        Regex::new(&format!(
+            r"(?P<var>{VARIABLE})\[(?P<indexing_at>\d+)\] = '.';"
+        )).unwrap();
+
+    pub static ref STRCPY_BUFFER: Regex =
+        Regex::new(&format!(
+            r#"strcpy\((?P<var>{VARIABLE}), (?:"(?P<written_to_buffer>.*)"|(?P<written_from_var>{VARIABLE}))\);"#
+        )).unwrap();
+
+    pub static ref STRCAT_BUFFER: Regex =
+        Regex::new(&format!(
+            r#"strcat\((?P<var>{VARIABLE}), (?:"(?P<written_to_buffer>.*)"|(?P<written_from_var>{VARIABLE}))\);"#
+        )).unwrap();
+
+    pub static ref GETS_BUFFER: Regex =
+        Regex::new(&format!(
+            r"gets\((?P<var>{VARIABLE})\);"
+        )).unwrap();
 }

@@ -1,14 +1,14 @@
+pub mod analyser_error;
+pub mod variables;
+
 use analyser_error::AnalyserError;
 use std::collections::HashMap;
 use variables::{
     BufferVariable,
     ContentType::{Value, UNKNOWN},
-    ASSIGN_DYNAMIC_BUFFER, ASSIGN_STATIC_BUFFER, INDEXING_BUFFER, STD_CIN_BUFFER, STRCAT_BUFFER,
+    ASSIGN_DYNAMIC_BUFFER, ASSIGN_STATIC_BUFFER, GETS_BUFFER, INDEXING_BUFFER, STRCAT_BUFFER,
     STRCPY_BUFFER,
 };
-
-pub mod analyser_error;
-pub mod variables;
 
 pub struct LexicalAnalyser {
     buffers: HashMap<String, BufferVariable>,
@@ -23,7 +23,7 @@ impl LexicalAnalyser {
 
         for (err_builder, line) in lines
             .enumerate()
-            .map(|(idx, line)| (AnalyserError::builder(idx + 1), line))
+            .map(|(idx, line)| (AnalyserError::builder(idx + 1, line), line))
         {
             match (
                 ASSIGN_STATIC_BUFFER.captures(line),
@@ -50,14 +50,8 @@ impl LexicalAnalyser {
                 let ref buffer = analyser.buffers[&var_name];
                 let indexing_at = cap["indexing_at"].parse().unwrap();
                 if indexing_at >= buffer.buffer_size {
-                    errors.push(err_builder.fatal(
-                        "Buffer Index Overflow Detected",
-                        buffer.buffer_size,
-                        indexing_at,
-                    ));
+                    errors.push(err_builder.index_buffer_overflow(indexing_at, buffer.buffer_size));
                 }
-
-                println!("{:?}", cap);
             } else if let Some(cap) = STRCPY_BUFFER.captures(line) {
                 let var_name = cap["var"].to_owned();
 
@@ -68,7 +62,7 @@ impl LexicalAnalyser {
                         .content
                         .clone()
                 } else {
-                    unreachable!();
+                    unreachable!()
                 };
 
                 let ref buffer = analyser.buffers[&var_name];
@@ -78,18 +72,15 @@ impl LexicalAnalyser {
                     }
                     Value(written_content) => {
                         if buffer.buffer_size < written_content.len() {
-                            errors.push(err_builder.fatal(
-                                "Buffer Overflow Detected",
-                                buffer.buffer_size,
-                                written_content.len(),
-                            ));
+                            errors.push(
+                                err_builder
+                                    .copy_buffer_overflow(written_content, buffer.buffer_size),
+                            );
                         }
                         analyser.buffers.get_mut(&var_name).unwrap().content =
                             Value(written_content.clone());
                     }
                 }
-
-                println!("{:?}", cap);
             } else if let Some(cap) = STRCAT_BUFFER.captures(line) {
                 let var_name = cap["var"].to_owned();
 
@@ -100,7 +91,7 @@ impl LexicalAnalyser {
                         .content
                         .clone()
                 } else {
-                    unreachable!();
+                    unreachable!()
                 };
 
                 let ref buffer = analyser.buffers[&var_name];
@@ -112,32 +103,27 @@ impl LexicalAnalyser {
                         errors.push(err_builder.warning("Buffer stores unknown value"));
                     }
                     (Value(buffer_content), Value(written_content)) => {
-                        let content_size = buffer_content.len() + written_content.len();
-                        if buffer.buffer_size < content_size {
-                            errors.push(err_builder.fatal(
-                                "Buffer Overflow when concatenating to Buffer content",
+                        if buffer.buffer_size < buffer_content.len() + written_content.len() {
+                            errors.push(err_builder.concat_buffer_overflow(
+                                buffer_content,
+                                written_content,
                                 buffer.buffer_size,
-                                content_size,
                             ));
                         }
                     }
                 }
-
-                println!("{:?}", cap);
-            } else if let Some(cap) = STD_CIN_BUFFER.captures(line) {
+            } else if let Some(cap) = GETS_BUFFER.captures(line) {
                 let var_name = cap["var"].to_owned();
 
                 errors.push(err_builder.warning("Cannot determine the content of Buffer"));
                 analyser.buffers.get_mut(&var_name).unwrap().content = UNKNOWN;
-
-                println!("{:?}", cap);
             }
         }
 
-        analyser
-            .buffers
-            .iter()
-            .for_each(|(_, buffer)| println!("{:?}", buffer));
+        // analyser
+        //     .buffers
+        //     .iter()
+        //     .for_each(|(_, buffer)| println!("{:?}", buffer));
 
         errors
     }
