@@ -1,6 +1,4 @@
-use std::borrow::Borrow;
-
-use colored::*;
+use colored::Colorize;
 
 pub struct AnalyserError {
     pub line_number: usize,

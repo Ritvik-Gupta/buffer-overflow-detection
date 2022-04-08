@@ -15,12 +15,27 @@ pub struct LexicalAnalyser {
 }
 
 impl LexicalAnalyser {
-    pub fn perform_on<'a>(lines: impl Iterator<Item = &'a str>) -> Vec<AnalyserError> {
+    pub fn perform_on(file_content: String) -> Vec<AnalyserError> {
         let mut analyser = LexicalAnalyser {
             buffers: HashMap::new(),
         };
         let mut errors = Vec::new();
 
+        analyser.analyze_unit_buffers(file_content.split('\n'), &mut errors);
+
+        // analyser
+        //     .buffers
+        //     .iter()
+        //     .for_each(|(_, buffer)| println!("{:?}", buffer));
+
+        errors
+    }
+
+    fn analyze_unit_buffers<'a>(
+        &mut self,
+        lines: impl Iterator<Item = &'a str>,
+        errors: &mut Vec<AnalyserError>,
+    ) {
         for (err_builder, line) in lines
             .enumerate()
             .map(|(idx, line)| (AnalyserError::builder(idx + 1, line), line))
@@ -31,7 +46,7 @@ impl LexicalAnalyser {
             ) {
                 (Some(cap), _) | (_, Some(cap)) => {
                     let var_name = cap["var"].to_owned();
-                    analyser.buffers.insert(
+                    self.buffers.insert(
                         var_name.clone(),
                         BufferVariable {
                             var_name,
@@ -47,7 +62,7 @@ impl LexicalAnalyser {
             if let Some(cap) = INDEXING_BUFFER.captures(line) {
                 let var_name = cap["var"].to_owned();
 
-                let ref buffer = analyser.buffers[&var_name];
+                let ref buffer = self.buffers[&var_name];
                 let indexing_at = cap["indexing_at"].parse().unwrap();
                 if indexing_at >= buffer.buffer_size {
                     errors.push(err_builder.index_buffer_overflow(indexing_at, buffer.buffer_size));
@@ -58,14 +73,12 @@ impl LexicalAnalyser {
                 let written_content = if let Some(to_buffer) = cap.name("written_to_buffer") {
                     Value(to_buffer.as_str().to_owned())
                 } else if let Some(from_var) = cap.name("written_from_var") {
-                    analyser.buffers[&from_var.as_str().to_owned()]
-                        .content
-                        .clone()
+                    self.buffers[&from_var.as_str().to_owned()].content.clone()
                 } else {
                     unreachable!()
                 };
 
-                let ref buffer = analyser.buffers[&var_name];
+                let ref buffer = self.buffers[&var_name];
                 match &written_content {
                     UNKNOWN => {
                         errors.push(err_builder.warning("Trying to add content set at runtime"));
@@ -77,7 +90,7 @@ impl LexicalAnalyser {
                                     .copy_buffer_overflow(written_content, buffer.buffer_size),
                             );
                         }
-                        analyser.buffers.get_mut(&var_name).unwrap().content =
+                        self.buffers.get_mut(&var_name).unwrap().content =
                             Value(written_content.clone());
                     }
                 }
@@ -87,14 +100,12 @@ impl LexicalAnalyser {
                 let written_content = if let Some(to_buffer) = cap.name("written_to_buffer") {
                     Value(to_buffer.as_str().to_owned())
                 } else if let Some(from_var) = cap.name("written_from_var") {
-                    analyser.buffers[&from_var.as_str().to_owned()]
-                        .content
-                        .clone()
+                    self.buffers[&from_var.as_str().to_owned()].content.clone()
                 } else {
                     unreachable!()
                 };
 
-                let ref buffer = analyser.buffers[&var_name];
+                let ref buffer = self.buffers[&var_name];
                 match (&buffer.content, &written_content) {
                     (_, UNKNOWN) => {
                         errors.push(err_builder.warning("Trying to append unkown value to buffer"));
@@ -116,15 +127,8 @@ impl LexicalAnalyser {
                 let var_name = cap["var"].to_owned();
 
                 errors.push(err_builder.warning("Cannot determine the content of Buffer"));
-                analyser.buffers.get_mut(&var_name).unwrap().content = UNKNOWN;
+                self.buffers.get_mut(&var_name).unwrap().content = UNKNOWN;
             }
         }
-
-        // analyser
-        //     .buffers
-        //     .iter()
-        //     .for_each(|(_, buffer)| println!("{:?}", buffer));
-
-        errors
     }
 }
