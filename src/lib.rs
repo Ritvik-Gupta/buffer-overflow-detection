@@ -23,10 +23,12 @@ impl LexicalAnalyser {
 
         analyser.analyze_unit_buffers(file_content.split('\n'), &mut errors);
 
-        // analyser
-        //     .buffers
-        //     .iter()
-        //     .for_each(|(_, buffer)| println!("{:?}", buffer));
+        println!();
+        analyser
+            .buffers
+            .iter()
+            .for_each(|(_, buffer)| println!("{:?}", buffer));
+        println!();
 
         errors
     }
