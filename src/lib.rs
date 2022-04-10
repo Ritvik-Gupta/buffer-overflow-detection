@@ -107,11 +107,16 @@ impl LexicalAnalyser {
 
                 let ref buffer = self.buffers[&var_name];
                 match (&buffer.content, &written_content) {
+                    (UNKNOWN, UNKNOWN) => {
+                        errors.push(err_builder.warning("Unknown concatenated with unknown value"));
+                    }
                     (_, UNKNOWN) => {
                         errors.push(err_builder.warning("Trying to append unkown value to buffer"));
                     }
                     (UNKNOWN, _) => {
-                        errors.push(err_builder.warning("Buffer stores unknown value"));
+                        errors.push(
+                            err_builder.warning("Buffer stores unknown value to be concatenated"),
+                        );
                     }
                     (Value(buffer_content), Value(written_content)) => {
                         if buffer.buffer_size < buffer_content.len() + written_content.len() {

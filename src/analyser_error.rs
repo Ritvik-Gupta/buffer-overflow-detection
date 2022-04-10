@@ -14,12 +14,6 @@ pub enum ErrorType {
     Fatal(Vec<String>),
 }
 
-impl ErrorType {
-    fn fatal(additional_info: Vec<&str>) -> Self {
-        Self::Fatal(additional_info.into_iter().map(|s| s.to_owned()).collect())
-    }
-}
-
 impl AnalyserError {
     pub fn builder(line_number: usize, line: &str) -> ErrorBuilder {
         ErrorBuilder(line_number, line.trim().to_owned())
@@ -41,9 +35,10 @@ impl ErrorBuilder {
             line_number: self.0,
             line: self.1,
             reason: "Buffer Index Overflow detected".to_owned(),
-            error: ErrorType::fatal(vec![
-                &format!("Buffer Size is {} chars", buffer_size),
-                &format!("Tried to Index at {}", indexed_at),
+            error: ErrorType::Fatal(vec![
+                format!("Buffer Size is {} chars", buffer_size),
+                format!("Tried to Index at {}", indexed_at),
+                format!("Indexing allowed for indices {} - {}", 0, buffer_size - 1),
             ]),
         }
     }
@@ -57,10 +52,10 @@ impl ErrorBuilder {
             line_number: self.0,
             line: self.1,
             reason: "Buffer Overflow detected while Copying".to_owned(),
-            error: ErrorType::fatal(vec![
-                &format!("Buffer Size is {} chars", buffer_size),
-                &format!("Content being updated to = '{}'", written_content),
-                &format!(
+            error: ErrorType::Fatal(vec![
+                format!("Buffer Size is {} chars", buffer_size),
+                format!("Content being updated to = '{}'", written_content),
+                format!(
                     "Tried to Write total {} extra chars",
                     written_content.len() - buffer_size
                 ),
@@ -78,13 +73,13 @@ impl ErrorBuilder {
             line_number: self.0,
             line: self.1,
             reason: "Buffer Overflow detected while Concatenating".to_owned(),
-            error: ErrorType::fatal(vec![
-                &format!("Buffer Size is {} chars", buffer_size),
-                &format!(
+            error: ErrorType::Fatal(vec![
+                format!("Buffer Size is {} chars", buffer_size),
+                format!(
                     "Content being updated to = '{}' + '{}'",
                     previous_content, additional_content
                 ),
-                &format!(
+                format!(
                     "Tried to Write total {} extra chars",
                     previous_content.len() + additional_content.len() - buffer_size
                 ),
